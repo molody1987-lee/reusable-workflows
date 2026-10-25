@@ -1,0 +1,66 @@
+name: Deploy to Aliyun (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+    secrets:
+      ALIYUN_ROLE_ARN:
+        required: true
+      ACR_REGISTRY:
+        required: true
+      ACR_USERNAME:
+        required: true
+      ACR_PASSWORD:
+        required: true
+      ALIYUN_KUBECONFIG:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # 用 OIDC 换取阿里云临时凭证
+      - name: Configure Aliyun Credentials via OIDC
+        uses: aliyun/configure-aliyun-credentials-action@v1
+        with:
+          role-to-assume: ${{ secrets.ALIYUN_ROLE_ARN }}
+          oidc-provider-arn: acs:ram::1175150067325716:oidc-provider/github_molody_lee
+          audience: sts.aliyuncs.com
+
+      # 登录 ACR（个人版必须用固定密码）
+      - name: Login to ACR
+        run: |
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+            --username=${{ secrets.ACR_USERNAME }} \
+            --password-stdin ${{ secrets.ACR_REGISTRY }}
+
+      # 构建并推送镜像
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+          docker build -t $IMAGE .
+          docker push $IMAGE
+
+      # 配置 kubectl
+      - name: Set up kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.ALIYUN_KUBECONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      # 部署
+      - name: Deploy to ACK
+        run: |
+          kubectl set image deployment/erp \
+            erp=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+          kubectl rollout status deployment/erp --timeout=120s
