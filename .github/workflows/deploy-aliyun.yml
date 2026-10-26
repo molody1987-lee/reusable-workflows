@@ -62,5 +62,5 @@ jobs:
       - name: Deploy to ACK
         run: |
           kubectl set image deployment/erp \
-            erp=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+            erp=${{ secrets.ACR_REGISTRY_VPC }}/molody1987_lee/erp:${{ github.sha }}
           kubectl rollout status deployment/erp --timeout=120s
