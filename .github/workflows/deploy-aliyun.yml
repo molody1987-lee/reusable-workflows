@@ -58,10 +58,9 @@ jobs:
           echo "${{ secrets.ALIYUN_KUBECONFIG }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
-      # 部署：先应用清单（首次创建 Deployment），再更新镜像
+      # 部署
       - name: Deploy to ACK
         run: |
-          kubectl apply -f k8s/erp-deployment.yaml
           kubectl set image deployment/erp \
             erp=${{ secrets.ACR_REGISTRY_VPC }}/molody1987_lee/erp:${{ github.sha }}
           kubectl rollout status deployment/erp --timeout=120s
