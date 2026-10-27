@@ -61,6 +61,10 @@ jobs:
       # 部署
       - name: Deploy to ACK
         run: |
-          kubectl set image deployment/erp \
-            erp=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+          kubectl set image deployment/erp erp=$IMAGE
+          kubectl set env deployment/erp \
+          SPRING_PROFILES_ACTIVE=${{ vars.SPRING_PROFILES_ACTIVE }} \
+          SPRING_DATASOURCE_URL=${{ secrets.DB_URL }} \
+          SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }} \
+          SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }}
           kubectl rollout status deployment/erp --timeout=120s
