@@ -77,6 +77,7 @@ jobs:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
+          SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
           kubectl set image deployment/erp erp="$IMAGE"
           kubectl set env deployment/erp \
             SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
@@ -92,6 +93,7 @@ jobs:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
+          SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
           echo "SPRING_PROFILES_ACTIVE=[$SPRING_PROFILES_ACTIVE] len=${#SPRING_PROFILES_ACTIVE}"
           echo "DB_URL len=${#DB_URL}"
           echo "DB_URL prefix=$(printf '%s' "$DB_URL" | cut -c1-20)"
