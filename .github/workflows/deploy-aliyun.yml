@@ -47,7 +47,7 @@ jobs:
       # 构建并推送镜像
       - name: Build and Push Docker Image
         run: |
-          echo "IMAGE=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}" >> $GITHUB_ENV
+          IMAGE=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
           docker build -t $IMAGE .
           docker push $IMAGE
 
@@ -61,7 +61,8 @@ jobs:
       # 部署
       - name: Deploy to ACK
         run: |
-          kubectl set image deployment/erp erp=$$IMAGE
+          kubectl set image deployment/erp \
+          erp=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
           kubectl set env deployment/erp \
           SPRING_PROFILES_ACTIVE=${{ vars.SPRING_PROFILES_ACTIVE }} \
           SPRING_DATASOURCE_URL=${{ secrets.DB_URL }} \
