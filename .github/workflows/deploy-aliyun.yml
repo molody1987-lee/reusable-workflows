@@ -89,36 +89,14 @@ jobs:
             esac
           fi
           echo "resolved SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE (environment=$ENVIRONMENT)"
+          export SPRING_PROFILES_ACTIVE  # envsubst 需要它在环境变量里
 
-          # 1) 设置镜像和环境变量
-          kubectl set image deployment/erp erp="$IMAGE"
-          kubectl set env deployment/erp \
-            SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
-            SPRING_DATASOURCE_URL="$DB_URL" \
-            SPRING_DATASOURCE_USERNAME="$DB_USERNAME" \
-            SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
+          # 用 envsubst 渲染清单模板，然后 kubectl apply
+          # 清单文件在调用方仓库的 k8s/ 目录下（流水线 checkout 的是调用方仓库）
+          envsubst < k8s/erp-deployment.yaml > /tmp/erp-deployment-rendered.yaml
+          kubectl apply -f /tmp/erp-deployment-rendered.yaml
 
-          # 2) 确保 readinessProbe / livenessProbe 存在（首次部署没有 K8s 清单时补上）
-          #    用 strategic merge patch（按容器 name 匹配），避免覆盖已有 image/env 等字段
-          kubectl patch deployment erp -p '{
-            "spec": {"template": {"spec": {"containers": [{
-              "name": "erp",
-              "readinessProbe": {
-                "httpGet": {"path": "/actuator/health/readiness", "port": 8080},
-                "initialDelaySeconds": 15,
-                "periodSeconds": 5,
-                "failureThreshold": 3
-              },
-              "livenessProbe": {
-                "httpGet": {"path": "/actuator/health/liveness", "port": 8080},
-                "initialDelaySeconds": 30,
-                "periodSeconds": 10,
-                "failureThreshold": 3
-              }
-            }]}}}
-          }'
-
-          # 3) 等待滚动更新完成，显式检查退出码（避开 kubectl 超时返回 0 的 bug）
+          # 等待滚动更新完成，显式检查退出码（避开 kubectl 超时返回 0 的 bug）
           echo "Waiting for rollout..."
           if ! kubectl rollout status deployment/erp --timeout=180s; then
             echo "ERROR: rollout failed or timed out"
