@@ -69,3 +69,9 @@ jobs:
           SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }} \
           SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }}
           kubectl rollout status deployment/erp --timeout=120s
+
+      - name: Debug DB vars
+        run: |
+          echo "DB_URL length: ${#DB_URL}"
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
