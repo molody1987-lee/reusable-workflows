@@ -142,27 +142,3 @@ jobs:
           kubectl logs deploy/erp --tail=100
           kubectl describe pod -l app=erp
           exit 1
-
-      - name: Debug vars
-        env:
-          ENVIRONMENT: ${{ inputs.environment }}
-          PROFILE_OVERRIDE: ${{ inputs.spring-profiles-active }}
-          DB_URL: ${{ secrets.DB_URL }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        run: |
-          if [ -n "$PROFILE_OVERRIDE" ]; then
-            SPRING_PROFILES_ACTIVE="$PROFILE_OVERRIDE"
-          else
-            case "$ENVIRONMENT" in
-              production) SPRING_PROFILES_ACTIVE=prod ;;
-              staging)    SPRING_PROFILES_ACTIVE=staging ;;
-              *)          SPRING_PROFILES_ACTIVE="$ENVIRONMENT" ;;
-            esac
-          fi
-          echo "ENVIRONMENT=[$ENVIRONMENT]"
-          echo "SPRING_PROFILES_ACTIVE=[$SPRING_PROFILES_ACTIVE] len=${#SPRING_PROFILES_ACTIVE}"
-          echo "DB_URL len=${#DB_URL}"
-          echo "DB_URL prefix=$(printf '%s' "$DB_URL" | cut -c1-20)"
-          echo "DB_USERNAME=[$DB_USERNAME]"
-          echo "DB_PASSWORD len=${#DB_PASSWORD}"
