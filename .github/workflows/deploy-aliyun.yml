@@ -72,6 +72,6 @@ jobs:
 
       - name: Debug DB vars
         run: |
-          echo "SPRING_PROFILES_ACTIVE length: ${#SPRING_PROFILES_ACTIVE}"
+          echo "DB_URL length: ${#DB_URL}"
         env:
-          SPRING_PROFILES_ACTIVE: ${{ vars.SPRING_PROFILES_ACTIVE }}
+          DB_URL: ${{ secrets.DB_URL }}
