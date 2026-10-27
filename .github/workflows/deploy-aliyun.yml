@@ -9,7 +9,7 @@ on:
       spring-profiles-active:
         required: false
         type: string
-        default: 'prod'
+        default: ''
     secrets:
       ALIYUN_ROLE_ARN:
         required: true
@@ -72,12 +72,23 @@ jobs:
       - name: Deploy to ACK
         env:
           IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
-          SPRING_PROFILES_ACTIVE: ${{ inputs.spring-profiles-active }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          PROFILE_OVERRIDE: ${{ inputs.spring-profiles-active }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
+          # profile 优先级：显式 override > 按 environment 映射
+          if [ -n "$PROFILE_OVERRIDE" ]; then
+            SPRING_PROFILES_ACTIVE="$PROFILE_OVERRIDE"
+          else
+            case "$ENVIRONMENT" in
+              production) SPRING_PROFILES_ACTIVE=prod ;;
+              staging)    SPRING_PROFILES_ACTIVE=staging ;;
+              *)          SPRING_PROFILES_ACTIVE="$ENVIRONMENT" ;;
+            esac
+          fi
+          echo "resolved SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE (environment=$ENVIRONMENT)"
           kubectl set image deployment/erp erp="$IMAGE"
           kubectl set env deployment/erp \
             SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
@@ -88,12 +99,22 @@ jobs:
 
       - name: Debug vars
         env:
-          SPRING_PROFILES_ACTIVE: ${{ inputs.spring-profiles-active }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          PROFILE_OVERRIDE: ${{ inputs.spring-profiles-active }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
+          if [ -n "$PROFILE_OVERRIDE" ]; then
+            SPRING_PROFILES_ACTIVE="$PROFILE_OVERRIDE"
+          else
+            case "$ENVIRONMENT" in
+              production) SPRING_PROFILES_ACTIVE=prod ;;
+              staging)    SPRING_PROFILES_ACTIVE=staging ;;
+              *)          SPRING_PROFILES_ACTIVE="$ENVIRONMENT" ;;
+            esac
+          fi
+          echo "ENVIRONMENT=[$ENVIRONMENT]"
           echo "SPRING_PROFILES_ACTIVE=[$SPRING_PROFILES_ACTIVE] len=${#SPRING_PROFILES_ACTIVE}"
           echo "DB_URL len=${#DB_URL}"
           echo "DB_URL prefix=$(printf '%s' "$DB_URL" | cut -c1-20)"
