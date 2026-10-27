@@ -99,7 +99,8 @@ jobs:
             SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
 
           # 2) 确保 readinessProbe / livenessProbe 存在（首次部署没有 K8s 清单时补上）
-          kubectl patch deployment erp --type merge -p '{
+          #    用 strategic merge patch（按容器 name 匹配），避免覆盖已有 image/env 等字段
+          kubectl patch deployment erp -p '{
             "spec": {"template": {"spec": {"containers": [{
               "name": "erp",
               "readinessProbe": {
