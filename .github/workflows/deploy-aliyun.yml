@@ -17,6 +17,12 @@ on:
         required: true
       ALIYUN_KUBECONFIG:
         required: true
+      DB_URL:
+        required: false
+      DB_USERNAME:
+        required: false
+      DB_PASSWORD:
+        required: false
 
 jobs:
   deploy:
