@@ -98,27 +98,7 @@ jobs:
             SPRING_DATASOURCE_USERNAME="$DB_USERNAME" \
             SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
 
-          # 2) 确保 readinessProbe / livenessProbe 存在（首次部署没有 K8s 清单时补上）
-          #    用 strategic merge patch（按容器 name 匹配），避免覆盖已有 image/env 等字段
-          kubectl patch deployment erp -p '{
-            "spec": {"template": {"spec": {"containers": [{
-              "name": "erp",
-              "readinessProbe": {
-                "httpGet": {"path": "/actuator/health/readiness", "port": 8080},
-                "initialDelaySeconds": 15,
-                "periodSeconds": 5,
-                "failureThreshold": 3
-              },
-              "livenessProbe": {
-                "httpGet": {"path": "/actuator/health/liveness", "port": 8080},
-                "initialDelaySeconds": 30,
-                "periodSeconds": 10,
-                "failureThreshold": 3
-              }
-            }]}}}
-          }'
-
-          # 3) 等待滚动更新完成，显式检查退出码（避开 kubectl 超时返回 0 的 bug）
+          # 2) 等待滚动更新完成，显式检查退出码（避开 kubectl 超时返回 0 的 bug）
           echo "Waiting for rollout..."
           if ! kubectl rollout status deployment/erp --timeout=180s; then
             echo "ERROR: rollout failed or timed out"
