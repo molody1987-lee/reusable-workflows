@@ -6,6 +6,9 @@ on:
       environment:
         required: true
         type: string
+      SPRING_PROFILES_ACTIVE:
+        required: true
+        type: string
     secrets:
       ALIYUN_ROLE_ARN:
         required: true
@@ -66,15 +69,20 @@ jobs:
 
       # 部署
       - name: Deploy to ACK
+        env:
+          IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+          SPRING_PROFILES_ACTIVE: ${{ inputs.spring-profiles-active }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          kubectl set image deployment/erp \
-          erp=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+          kubectl set image deployment/erp erp="$IMAGE"
           kubectl set env deployment/erp \
-          SPRING_PROFILES_ACTIVE=${{ vars.SPRING_PROFILES_ACTIVE }} \
-          SPRING_DATASOURCE_URL=${{ secrets.DB_URL }} \
-          SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }} \
-          SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }}
-          kubectl rollout status deployment/erp --timeout=120s
+            SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
+            SPRING_DATASOURCE_URL="$DB_URL" \
+            SPRING_DATASOURCE_USERNAME="$DB_USERNAME" \
+            SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
+          kubectl rollout status deployment/erp --timeout=180s
 
       - name: Debug DB vars
         run: |
