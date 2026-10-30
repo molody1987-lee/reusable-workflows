@@ -46,6 +46,18 @@ jobs:
           role-to-assume: ${{ secrets.ALIYUN_ROLE_ARN }}
           oidc-provider-arn: acs:ram::1175150067325716:oidc-provider/github_molody_lee
           audience: sts.aliyuncs.com
+      # 下载 命令行工具 yaml2env
+      - name: Install yaml2env
+        run: |
+          go install github.com/huberp/yaml2env@latest
+
+      - name: Load config into environment
+        run: yaml2env ./src/main/resources/application.yml --set
+
+      - name: Use application name
+        run: |
+          # yaml2env 通常会将嵌套键转换为类似 SPRING_APPLICATION_NAME 的格式
+          echo "Spring App Name: $SPRING_APPLICATION_NAME"
 
       # 登录 ACR（个人版必须用固定密码）
       - name: Login to ACR
@@ -57,7 +69,7 @@ jobs:
       # 构建并推送镜像
       - name: Build and Push Docker Image
         run: |
-          IMAGE=${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+          IMAGE=${{ secrets.ACR_REGISTRY }}/molody1987_lee/${{SPRING_APPLICATION_NAME}}:${{ github.sha }}
           docker build -t $IMAGE .
           docker push $IMAGE
 
@@ -71,7 +83,7 @@ jobs:
       # 部署
       - name: Deploy to ACK
         env:
-          IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/erp:${{ github.sha }}
+          IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/${{SPRING_APPLICATION_NAME}}:${{ github.sha }}
           ENVIRONMENT: ${{ inputs.environment }}
           PROFILE_OVERRIDE: ${{ inputs.spring-profiles-active }}
           DB_URL: ${{ secrets.DB_URL }}
@@ -91,8 +103,8 @@ jobs:
           echo "resolved SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE (environment=$ENVIRONMENT)"
 
           # 1) 设置镜像和环境变量
-          kubectl set image deployment/erp erp="$IMAGE"
-          kubectl set env deployment/erp \
+          kubectl set image deployment/${{SPRING_APPLICATION_NAME}} ${{SPRING_APPLICATION_NAME}}="$IMAGE"
+          kubectl set env deployment/${{SPRING_APPLICATION_NAME}} \
             SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
             SPRING_DATASOURCE_URL="$DB_URL" \
             SPRING_DATASOURCE_USERNAME="$DB_USERNAME" \
@@ -100,9 +112,9 @@ jobs:
 
           # 2) 等待滚动更新完成，显式检查退出码（避开 kubectl 超时返回 0 的 bug）
           echo "Waiting for rollout..."
-          if ! kubectl rollout status deployment/erp --timeout=180s; then
+          if ! kubectl rollout status deployment/${{SPRING_APPLICATION_NAME}} --timeout=180s; then
             echo "ERROR: rollout failed or timed out"
-            kubectl describe deployment erp
+            kubectl describe deployment ${{SPRING_APPLICATION_NAME}}
             kubectl get pods -o wide
             exit 1
           fi
@@ -113,13 +125,13 @@ jobs:
         run: |
           echo "Probing application readiness..."
           for i in $(seq 1 18); do
-            STATUS=$(kubectl exec deploy/erp -- \
+            STATUS=$(kubectl exec deploy/${{SPRING_APPLICATION_NAME}} -- \
               wget -qO- --timeout=3 http://localhost:8080/actuator/health/readiness 2>/dev/null || echo "")
             echo "  attempt $i: $STATUS"
             echo "$STATUS" | grep -q '"status":"UP"' && { echo "OK: application is READY"; exit 0; }
             sleep 5
           done
           echo "ERROR: health check did not return UP within 90s"
-          kubectl logs deploy/erp --tail=100
-          kubectl describe pod -l app=erp
+          kubectl logs deploy/${{SPRING_APPLICATION_NAME}} --tail=100
+          kubectl describe pod -l app=${{SPRING_APPLICATION_NAME}}
           exit 1
