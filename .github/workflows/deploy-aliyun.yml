@@ -47,9 +47,16 @@ jobs:
           oidc-provider-arn: acs:ram::1175150067325716:oidc-provider/github_molody_lee
           audience: sts.aliyuncs.com
       # 下载 命令行工具 yaml2env
+      - name: Cache yaml2env binary
+        id: cache-yaml2env
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/yaml2env
+          key: ${{ runner.os }}-yaml2env
+
       - name: Install yaml2env
-        run: |
-          go install github.com/huberp/yaml2env@latest
+        if: steps.cache-yaml2env.outputs.cache-hit != 'true'
+        run: go install github.com/huberp/yaml2env@latest
 
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
