@@ -93,7 +93,7 @@ jobs:
       # 部署
       - name: Deploy to ACK
         env:
-          IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/$SPRING_APPLICATION_NAME:${{ github.sha }}
+          IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/${{env.SPRING_APPLICATION_NAME}}:${{ github.sha }}
           ENVIRONMENT: ${{ inputs.environment }}
           PROFILE_OVERRIDE: ${{ inputs.spring-profiles-active }}
           DB_URL: ${{ secrets.DB_URL }}
