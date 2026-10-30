@@ -69,7 +69,7 @@ jobs:
       # 构建并推送镜像
       - name: Build and Push Docker Image
         run: |
-          IMAGE=${{ secrets.ACR_REGISTRY }}/molody1987_lee/${{SPRING_APPLICATION_NAME}}:${{ github.sha }}
+          IMAGE=${{ secrets.ACR_REGISTRY }}/molody1987_lee/$SPRING_APPLICATION_NAME:${{ github.sha }}
           docker build -t $IMAGE .
           docker push $IMAGE
 
@@ -83,7 +83,7 @@ jobs:
       # 部署
       - name: Deploy to ACK
         env:
-          IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/${{SPRING_APPLICATION_NAME}}:${{ github.sha }}
+          IMAGE: ${{ secrets.ACR_REGISTRY }}/molody1987_lee/$SPRING_APPLICATION_NAME:${{ github.sha }}
           ENVIRONMENT: ${{ inputs.environment }}
           PROFILE_OVERRIDE: ${{ inputs.spring-profiles-active }}
           DB_URL: ${{ secrets.DB_URL }}
@@ -103,8 +103,8 @@ jobs:
           echo "resolved SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE (environment=$ENVIRONMENT)"
 
           # 1) 设置镜像和环境变量
-          kubectl set image deployment/${{SPRING_APPLICATION_NAME}} ${{SPRING_APPLICATION_NAME}}="$IMAGE"
-          kubectl set env deployment/${{SPRING_APPLICATION_NAME}} \
+          kubectl set image deployment/$SPRING_APPLICATION_NAME $SPRING_APPLICATION_NAME="$IMAGE"
+          kubectl set env deployment/$SPRING_APPLICATION_NAME \
             SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
             SPRING_DATASOURCE_URL="$DB_URL" \
             SPRING_DATASOURCE_USERNAME="$DB_USERNAME" \
@@ -112,9 +112,9 @@ jobs:
 
           # 2) 等待滚动更新完成，显式检查退出码（避开 kubectl 超时返回 0 的 bug）
           echo "Waiting for rollout..."
-          if ! kubectl rollout status deployment/${{SPRING_APPLICATION_NAME}} --timeout=180s; then
+          if ! kubectl rollout status deployment/$SPRING_APPLICATION_NAME --timeout=180s; then
             echo "ERROR: rollout failed or timed out"
-            kubectl describe deployment ${{SPRING_APPLICATION_NAME}}
+            kubectl describe deployment $SPRING_APPLICATION_NAME
             kubectl get pods -o wide
             exit 1
           fi
@@ -125,13 +125,13 @@ jobs:
         run: |
           echo "Probing application readiness..."
           for i in $(seq 1 18); do
-            STATUS=$(kubectl exec deploy/${{SPRING_APPLICATION_NAME}} -- \
+            STATUS=$(kubectl exec deploy/$SPRING_APPLICATION_NAME -- \
               wget -qO- --timeout=3 http://localhost:8080/actuator/health/readiness 2>/dev/null || echo "")
             echo "  attempt $i: $STATUS"
             echo "$STATUS" | grep -q '"status":"UP"' && { echo "OK: application is READY"; exit 0; }
             sleep 5
           done
           echo "ERROR: health check did not return UP within 90s"
-          kubectl logs deploy/${{SPRING_APPLICATION_NAME}} --tail=100
-          kubectl describe pod -l app=${{SPRING_APPLICATION_NAME}}
+          kubectl logs deploy/$SPRING_APPLICATION_NAME --tail=100
+          kubectl describe pod -l app=$SPRING_APPLICATION_NAME
           exit 1
