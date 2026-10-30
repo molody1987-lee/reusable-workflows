@@ -51,6 +51,9 @@ jobs:
         run: |
           go install github.com/huberp/yaml2env@latest
 
+      - name: Add Go bin to PATH
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
       - name: Load config into environment
         run: yaml2env ./src/main/resources/application.yml --set
 
